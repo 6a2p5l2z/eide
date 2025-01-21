@@ -2344,13 +2344,14 @@ class ProjectDataProvider implements vscode.TreeDataProvider<ProjTreeItem>, vsco
             GlobalEvent.emit('msg', ExceptionToMessage(error, 'Hidden'));
         }
 
-        let saveEnvFile = () => {
+        let saveEnvFile = (option: ImportOptions) => {
             const envContent = ini.stringify({
                 EIDE: {
                     TYPE: option.type,
                     OUT_DIR: option.outDir?.path,
                     PROJECT_FILE: option.projectFile.path,
                     CREATE_NEW_FOLDER: option.createNewFolder,
+                    MDK_PROD: option.mdk_prod,
                 }
             });
 
@@ -2369,17 +2370,17 @@ class ProjectDataProvider implements vscode.TreeDataProvider<ProjTreeItem>, vsco
         switch (option.type) {
             case 'mdk':
                 this.ImportKeilProject(option)
-                    .then(() => saveEnvFile())
+                    .then(() => saveEnvFile(option))
                     .catch(err => catchErr(err));
                 break;
             case 'eclipse':
                 this.ImportEclipseProject(option)
-                    .then(() => saveEnvFile())
+                    .then(() => saveEnvFile(option))
                     .catch(err => catchErr(err));
                 break;
             case 'iar':
                 this.ImportIarProject(option)
-                    .then(() => saveEnvFile())
+                    .then(() => saveEnvFile(option))
                     .catch(err => catchErr(err));
                 break;
             default:
@@ -2418,8 +2419,9 @@ class ProjectDataProvider implements vscode.TreeDataProvider<ProjTreeItem>, vsco
                 outDir: new File(optionContent['OUT_DIR']),
                 projectFile: new File(optionContent['PROJECT_FILE']),
                 createNewFolder: optionContent['CREATE_NEW_FOLDER'] === 'true',
+                mdk_prod: optionContent['MDK_PROD'],
             };
-            
+
             this.ImportProject(option);
         }
     }
