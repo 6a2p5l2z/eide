@@ -38,3 +38,6 @@ dotnet-runtime*.exe
 
 # test
 test
+
+# webstorm
+.idea
