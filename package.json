@@ -637,6 +637,10 @@
                 "title": "Import a project by eide"
             },
             {
+                "command": "eide.operation.sync_project",
+                "title": "Sync a project by eide"
+            },
+            {
                 "command": "eide.operation.new_project",
                 "title": "Create a new project by eide"
             },

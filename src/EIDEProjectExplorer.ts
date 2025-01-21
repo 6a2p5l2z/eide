@@ -25,6 +25,7 @@
 import * as vscode from 'vscode';
 import * as events from 'events';
 import * as fs from 'fs';
+import * as path from 'path';
 import * as NodePath from 'path';
 import * as child_process from 'child_process';
 import * as os from 'os';
@@ -2343,18 +2344,83 @@ class ProjectDataProvider implements vscode.TreeDataProvider<ProjTreeItem>, vsco
             GlobalEvent.emit('msg', ExceptionToMessage(error, 'Hidden'));
         }
 
+        let saveEnvFile = () => {
+            const envContent = ini.stringify({
+                EIDE: {
+                    TYPE: option.type,
+                    OUT_DIR: option.outDir?.path,
+                    PROJECT_FILE: option.projectFile.path,
+                    CREATE_NEW_FOLDER: option.createNewFolder,
+                }
+            });
+
+            var envFilePath = path.join(option.projectFile.path, AbstractProject.EIDE_DIR, 'env.ini');
+            if (option.outDir != undefined) {
+                envFilePath = path.join(option.outDir.path, AbstractProject.EIDE_DIR, 'env.ini');
+            }
+
+            if (fs.existsSync(envFilePath)) {
+                fs.appendFileSync(envFilePath, envContent, 'utf-8');
+            } else {
+                fs.writeFileSync(envFilePath, envContent, 'utf-8');
+            }
+        }
+
         switch (option.type) {
             case 'mdk':
-                this.ImportKeilProject(option).catch(err => catchErr(err));
+                this.ImportKeilProject(option)
+                    .then(() => saveEnvFile())
+                    .catch(err => catchErr(err));
                 break;
             case 'eclipse':
-                this.ImportEclipseProject(option).catch(err => catchErr(err));
+                this.ImportEclipseProject(option)
+                    .then(() => saveEnvFile())
+                    .catch(err => catchErr(err));
                 break;
             case 'iar':
-                this.ImportIarProject(option).catch(err => catchErr(err));
+                this.ImportIarProject(option)
+                    .then(() => saveEnvFile())
+                    .catch(err => catchErr(err));
                 break;
             default:
                 break;
+        }
+    }
+
+    SyncProject() {
+
+        let readEnvFile = (envFilePath: string): any => {
+            if (!fs.existsSync(envFilePath)) {
+                return {};
+            }
+            return ini.parse(fs.readFileSync(envFilePath, 'utf-8'));
+        }
+
+        // 获取当前 VS Code 打开工程的根目录
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage('No workspace folder is open.');
+            return;
+        }
+        const rootPath = workspaceFolders[0].uri.fsPath;
+
+        // 定义 env.ini 文件路径
+        const envFilePath = path.join(rootPath, AbstractProject.EIDE_DIR, 'env.ini');
+
+        // 读取并解析 env.ini 文件内容
+        const envContent = readEnvFile(envFilePath);
+
+        const optionContent = envContent['EIDE'];
+        if (optionContent) {
+            // 将 env.ini 文件中的配置信息转换为 ImportOptions 对象
+            const option: ImportOptions = {
+                type: optionContent['TYPE'],
+                outDir: new File(optionContent['OUT_DIR']),
+                projectFile: new File(optionContent['PROJECT_FILE']),
+                createNewFolder: optionContent['CREATE_NEW_FOLDER'] === 'true',
+            };
+            
+            this.ImportProject(option);
         }
     }
 
@@ -3637,6 +3703,7 @@ export class ProjectExplorer implements CustomConfigurationProvider {
         this.on('request_create_project', (option: CreateOptions) => this.dataProvider.CreateProject(option));
         this.on('request_create_from_template', (option) => this.dataProvider.CreateFromTemplate(option));
         this.on('request_import_project', (option) => this.dataProvider.ImportProject(option));
+        this.on('request_sync_project', () => this.dataProvider.SyncProject());
     }
 
     onDispose() {
@@ -3967,6 +4034,7 @@ export class ProjectExplorer implements CustomConfigurationProvider {
     private on(event: 'request_create_project', listener: (option: CreateOptions) => void): void;
     private on(event: 'request_create_from_template', listener: (option: CreateOptions) => void): void;
     private on(event: 'request_import_project', listener: (option: ImportOptions) => void): void;
+    private on(event: 'request_sync_project', listener: () => void): void;
     private on(event: any, listener: (arg?: any) => void): void {
         this._event.on(event, listener);
     }
@@ -3975,6 +4043,7 @@ export class ProjectExplorer implements CustomConfigurationProvider {
     emit(event: 'request_create_project', option: CreateOptions): void;
     emit(event: 'request_create_from_template', option: CreateOptions): void;
     emit(event: 'request_import_project', option: ImportOptions): void;
+    emit(event: 'request_sync_project'): void;
     emit(event: any, arg?: any): void {
         this._event.emit(event, arg);
     }
@@ -5302,9 +5371,9 @@ export class ProjectExplorer implements CustomConfigurationProvider {
         if (!extraArgs)
             return;
 
-        const argsMap    = project.getExtraArgsForSource(fspath, virtpath, extraArgs);
+        const argsMap = project.getExtraArgsForSource(fspath, virtpath, extraArgs);
         const absPattern = project.getExtraArgsAbsPatternForSource(fspath, virtpath, extraArgs);
-        const ccOptions  = absPattern ? (argsMap[absPattern] || '') : '';
+        const ccOptions = absPattern ? (argsMap[absPattern] || '') : '';
 
         // merge all inherited args
         let inheritedArgs: string = '';
@@ -5430,9 +5499,9 @@ export class ProjectExplorer implements CustomConfigurationProvider {
         if (!extraArgs)
             return;
 
-        const argsMap    = project.getExtraArgsForFolder(folderpath, isVirtpath, extraArgs);
+        const argsMap = project.getExtraArgsForFolder(folderpath, isVirtpath, extraArgs);
         const absPattern = project.getExtraArgsAbsPatternForFolder(folderpath, isVirtpath, extraArgs);
-        const ccOptions  = absPattern ? (argsMap[absPattern] || '') : '';
+        const ccOptions = absPattern ? (argsMap[absPattern] || '') : '';
 
         // merge all inherited args
         let inheritedOptions: string = '';
@@ -7395,7 +7464,7 @@ export class ProjectExplorer implements CustomConfigurationProvider {
             if (prj.getUploaderType() == 'JLink') {
                 const jlinkUploadConf = <JLinkOptions>prj.GetConfiguration().config.uploadConfig;
                 debugConfig.interface = JLinkProtocolType[jlinkUploadConf.proType].toLowerCase();
-                debugConfig.device    = jlinkUploadConf.cpuInfo.cpuName;
+                debugConfig.device = jlinkUploadConf.cpuInfo.cpuName;
             }
 
             /* setup ui */

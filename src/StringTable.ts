@@ -937,6 +937,11 @@ export const import_project_hit = [
     'Import project from other IDE and complete the creation of EIDE project'
 ][langIndex];
 
+export const sync_project_hit = [
+    '同步已经创建的 EIDE 项目',
+    "Sync EIDE project that's already created"
+][langIndex];
+
 export const create_project = [
     '新建项目',
     'Create Project'
@@ -945,6 +950,11 @@ export const create_project = [
 export const view_str$import_project = [
     '导入项目',
     'Import Project'
+][langIndex];
+
+export const view_str$sync_project = [
+    '同步项目',
+    'Sync Project'
 ][langIndex];
 
 export const create_project_hit = [

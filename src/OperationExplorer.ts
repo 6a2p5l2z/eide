@@ -37,7 +37,7 @@ import {
     view_str$operation$create_from_internal_temp,
     view_str$operation$empty_8bit_prj,
     view_str$operation$empty_cortex_prj,
-    import_project_hit, view_str$import_project, view_str$operation$import_sel_out_folder, view_str$operation$empty_riscv_prj,
+    import_project_hit, sync_project_hit, view_str$import_project, view_str$sync_project, view_str$operation$import_sel_out_folder, view_str$operation$empty_riscv_prj,
     view_str$operation$create_from_remote_repo, view_str$operation$create_from_local_disk, view_str$operation$create_empty_project_detail,
     view_str$operation$create_from_internal_temp_detail, view_str$operation$create_from_local_disk_detail,
     view_str$operation$create_from_remote_repo_detail, view_str$operation$openSettings,
@@ -162,6 +162,7 @@ export class OperationExplorer {
     on(event: 'request_create_project', listener: (option: CreateOptions) => void): void;
     on(event: 'request_create_from_template', listener: (option: CreateOptions) => void): void;
     on(event: 'request_import_project', listener: (option: ImportOptions) => void): void;
+    on(event: 'request_sync_project', listener: () => void): void;
     on(event: any, listener: (arg?: any) => void): void {
         this._event.on(event, listener);
     }
@@ -170,6 +171,7 @@ export class OperationExplorer {
     private emit(event: 'request_create_project', option: CreateOptions): void;
     private emit(event: 'request_create_from_template', option: CreateOptions): void;
     private emit(event: 'request_import_project', option: ImportOptions): void;
+    private emit(event: 'request_sync_project'): void;
     private emit(event: any, arg?: any): void {
         this._event.emit(event, arg);
     }
@@ -237,6 +239,18 @@ export class OperationExplorer {
             tooltip: import_project_hit,
             iconPath: vscode.Uri.file(icoPath.path)
         });
+
+        icoPath = resManager.GetIconByName('Import_16x.svg');
+        this.provider.AddData({
+            label: view_str$sync_project,
+            command: {
+                title: view_str$sync_project,
+                command: '_cl.eide.Operation.Sync'
+            },
+            tooltip: sync_project_hit,
+            iconPath: vscode.Uri.file(icoPath.path)
+        });
+
 
         //---
 
@@ -688,6 +702,12 @@ export class OperationExplorer {
             // emit event
             this.emit('request_import_project', importOpts);
         }
+    }
+
+    async OnSyncProject(): Promise<void> {
+        // emit event
+        this.emit('request_sync_project');
+
     }
 
     private getStatusTxt(status: boolean): string {

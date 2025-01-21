@@ -125,6 +125,7 @@ export async function activate(context: vscode.ExtensionContext) {
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.Open', () => operationExplorer.OnOpenProject()));
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.Create', () => operationExplorer.OnCreateProject()));
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.Import', () => operationExplorer.OnImportProject()));
+    subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.Sync', () => operationExplorer.OnSyncProject()));
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.SetToolchainPath', () => operationExplorer.OnSetToolchainPath()));
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.SetupUtilTools', () => operationExplorer.setupUtilTools()));
     subscriptions.push(vscode.commands.registerCommand('_cl.eide.Operation.openSettings', () => SettingManager.jumpToSettings('@ext:cl.eide')));
@@ -271,6 +272,7 @@ export async function activate(context: vscode.ExtensionContext) {
     operationExplorer.on('request_create_project', (option) => projectExplorer.emit('request_create_project', option));
     operationExplorer.on('request_create_from_template', (option) => projectExplorer.emit('request_create_from_template', option));
     operationExplorer.on('request_import_project', (option) => projectExplorer.emit('request_import_project', option));
+    operationExplorer.on('request_sync_project', () => projectExplorer.emit('request_sync_project'));
 
     // status bar
     //subscriptions.push(vscode.commands.registerCommand('_cl.eide.statusbar.switch-project', () => projectExplorer.showQuickPickAndSwitchActiveProject()));
